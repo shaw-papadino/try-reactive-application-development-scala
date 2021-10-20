@@ -11,37 +11,38 @@ import scala.concurrent.duration._
 
 object Tourist {
   sealed trait Message extends CborSerializable
-  case class Guidance(code: String, description: String) extends Message
-  case class Start(codes: Seq[String]) extends Message
+  sealed case class Guidance(code: String, description: String) extends Message
+  sealed case class Start(codes: Seq[String]) extends Message
 
   // messageAdapter
   case class GuidebookUpdated(newGuidebooks: Set[ActorRef[Guidebook.Message]])
       extends Message
 
   def apply(): Behavior[Tourist.Message] =
-    Behaviors.setup { context =>
-      val subscriptionAdapter = context.messageAdapter[Receptionist.Listing] {
-        case Guidebook.GuidebookKey.Listing(guidebooks) =>
-          GuidebookUpdated(guidebooks)
+    Behaviors.withTimers { timer =>
+      Behaviors.setup { context =>
+        val subscriptionAdapter = context.messageAdapter[Receptionist.Listing] {
+          case Guidebook.GuidebookKey.Listing(guidebooks) =>
+            GuidebookUpdated(guidebooks)
+        }
+
+        // Subscribe
+        context.system.receptionist ! Receptionist.Subscribe(
+          Guidebook.GuidebookKey,
+          subscriptionAdapter
+        )
+        timer.startTimerAtFixedRate(Start(Locale.getISOCountries), 5.seconds)
+        receive(IndexedSeq.empty)
       }
-
-      // Subscribe
-      context.system.receptionist ! Receptionist.Subscribe(
-        Guidebook.GuidebookKey,
-        subscriptionAdapter
-      )
-
-      receive(IndexedSeq.empty)
     }
   def random(max: Int): Int = new Random().nextInt(max)
 
   def receive(
     guidebooks: IndexedSeq[ActorRef[Guidebook.Message]]
-  ): Behavior[Tourist.Message] = Behaviors.withTimers { timer =>
+  ): Behavior[Tourist.Message] =
     Behaviors.receive { (context, message) =>
       message match {
         case GuidebookUpdated(newGuidebooks) =>
-          timer.startSingleTimer(Start(Locale.getISOCountries), 3.seconds)
           context.log.info(s"newGuidebooks: $newGuidebooks")
           receive(newGuidebooks.toIndexedSeq)
         case Start(codes) =>
@@ -57,5 +58,4 @@ object Tourist {
           Behaviors.same
       }
     }
-  }
 }

@@ -2,7 +2,6 @@
 package shaw.papadino
 
 import akka.NotUsed
-
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.typed.Cluster

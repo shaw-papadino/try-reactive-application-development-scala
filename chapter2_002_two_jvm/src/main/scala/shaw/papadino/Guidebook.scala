@@ -8,7 +8,7 @@ import akka.actor.typed.scaladsl.Behaviors
 
 object Guidebook {
   sealed trait Message extends CborSerializable
-  case class Inquiry(code: String, replyTo: ActorRef[Tourist.Message])
+  sealed case class Inquiry(code: String, replyTo: ActorRef[Tourist.Message])
       extends Message
 
   val GuidebookKey: ServiceKey[Message] =
@@ -41,7 +41,6 @@ object Guidebook {
             replyTo ! Tourist.Guidance(code, describe(locale))
           }
         Behaviors.same
-
     }
   }
 }
